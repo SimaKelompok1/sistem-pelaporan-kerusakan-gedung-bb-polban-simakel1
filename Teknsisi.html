@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal Teknisi - Update Status Kerusakan Gedung BB</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 min-h-screen py-10 px-4 text-gray-100">
+
+    <div class="max-w-4xl mx-auto">
+        <div class="flex justify-between items-center mb-8 border-b border-gray-800 pb-4">
+            <div>
+                <h1 class="text-2xl font-bold text-blue-400">🔧 Portal Internal Teknisi Sarpras</h1>
+                <p class="text-sm text-gray-400">Khusus Manajemen Kondisi & Perbaikan Gedung BB</p>
+            </div>
+            <a href="index.html" class="text-sm bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-xl border border-gray-700 transition">Lihat Dashboard Utama →</a>
+        </div>
+
+        <div class="space-y-4">
+            <h3 class="text-lg font-semibold text-gray-300">Daftar Tugas Perbaikan Aktif</h3>
+            
+            <div id="containerSemuaTugasTeknisi" class="space-y-4">
+                <p id="teksTeknisiKosong" class="text-center text-sm text-gray-500 py-6">Belum ada tugas perbaikan masuk.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    const FIREBASE_BASE_URL = "https://sima-kel-1-default-rtdb.firebaseio.com/laporan";
+
+    function muatDataTeknisi() {
+        fetch(FIREBASE_BASE_URL + ".json")
+        .then(res => res.json())
+        .then(data => {
+            const wadahRiwayat = document.getElementById('wadahRiwayat') || document.querySelector('.space-y-4');
+            if (!wadahRiwayat) return;
+
+            wadahRiwayat.innerHTML = "";
+
+            if (!data) {
+                wadahRiwayat.innerHTML = `<p class="text-center text-sm text-gray-500 py-6">Belum ada tugas laporan kerusakan dari internet.</p>`;
+                return;
+            }
+
+            Object.keys(data).reverse().forEach(key => {
+                const item = data[key];
+
+                let warnaTeksStatus = "text-yellow-400";
+                if (item.status === "Diproses") warnaTeksStatus = "text-blue-400";
+                if (item.status === "Selesai") warnaTeksStatus = "text-emerald-400";
+
+                // PENGATURAN FOTO PROPORSIONAL SESUAI GAMBAR 1 (ANTI-GEPENG)
+                let elemenFotoDanTombol = "";
+                if (item.foto) {
+                    elemenFotoDanTombol = `
+                        <div class="mt-3">
+                            <button onclick="toggleFoto('${key}')" class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg flex items-center gap-1 transition font-medium mb-2">
+                                👁️ Lihat Foto
+                            </button>
+                            <div id="foto-${key}" class="hidden mt-2 bg-gray-900/50 p-2 rounded-xl border border-gray-700 inline-block">
+                                <img src="${item.foto}" class="rounded-lg max-h-80 w-auto object-contain mx-auto shadow-md">
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    elemenFotoDanTombol = `<p class="text-xs text-gray-500 mt-2 italic">Tidak ada lampiran foto bukti.</p>`;
+                }
+
+                const barisTugasHTML = `
+                    <div class="bg-gray-800 p-4 rounded-xl border border-gray-700 shadow-sm mb-3 text-left">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <span class="text-xs font-bold text-blue-400 bg-blue-950/50 px-2 py-1 rounded border border-blue-900/50">${item.id}</span>
+                                <h4 class="font-semibold text-gray-100 mt-2 text-sm">${item.judul}</h4>
+                            </div>
+                            <span class="text-xs font-medium ${warnaTeksStatus}">${item.status}</span>
+                        </div>
+                        <p class="text-xs text-gray-400">Pelapor: ${item.pelapor} | Waktu: ${item.waktu}</p>
+                        
+                        ${elemenFotoDanTombol}
+                        
+                        <div class="mt-4 flex gap-2 justify-end border-t border-gray-700/50 pt-3">
+                            <button onclick="updateStatusLaporan('${key}', 'Diproses')" class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition font-medium">Proses</button>
+                            <button onclick="updateStatusLaporan('${key}', 'Selesai')" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg transition font-medium">Selesai</button>
+                        </div>
+                    </div>
+                `;
+                wadahRiwayat.innerHTML += barisTugasHTML;
+            });
+        })
+        .catch(err => console.error(err));
+    }
+
+    function toggleFoto(idFoto) {
+        const wadahFoto = document.getElementById(`foto-${idFoto}`);
+        if (wadahFoto) {
+            wadahFoto.classList.toggle('hidden');
+        }
+    }
+
+    function updateStatusLaporan(firebaseKey, statusBaru) {
+        fetch(`${FIREBASE_BASE_URL}/${firebaseKey}.json`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: statusBaru })
+        })
+        .then(res => {
+            if (res.ok) {
+                alert("Status berhasil diperbarui!");
+                muatDataTeknisi();
+            }
+        })
+        .catch(err => alert("Gagal update status: " + err));
+    }
+
+    muatDataTeknisi();
+    setInterval(muatDataTeknisi, 6000);
+</script>
+</body>
+</html>

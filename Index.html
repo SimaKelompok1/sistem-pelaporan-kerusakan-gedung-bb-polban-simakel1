@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Pelaporan Kerusakan Gedung Polban - Gedung BB</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen py-10 px-4">
+
+    <div class="max-w-4xl mx-auto text-center mb-10">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">Dashboard Pelaporan Kerusakan</h1>
+        <p class="text-gray-500 mb-6">Monitoring Fasilitas Fisik & Utilitas Gedung BB Polban</p>
+        
+        <div class="grid grid-cols-3 gap-4">
+            <div class="bg-amber-50 p-5 rounded-2xl border border-amber-200 shadow-sm text-center">
+                <p class="text-xs font-bold text-amber-700 uppercase tracking-wider">Menunggu</p>
+                <p id="countMenunggu" class="text-4xl font-bold text-amber-600 mt-2">0</p>
+            </div>
+            <div class="bg-blue-50 p-5 rounded-2xl border border-blue-200 shadow-sm text-center">
+                <p class="text-xs font-bold text-blue-700 uppercase tracking-wider">Diproses</p>
+                <p id="countDiproses" class="text-4xl font-bold text-blue-600 mt-2">0</p>
+            </div>
+            <div class="bg-emerald-50 p-5 rounded-2xl border border-emerald-200 shadow-sm text-center">
+                <p class="text-xs font-bold text-emerald-700 uppercase tracking-wider">Selesai</p>
+                <p id="countSelesai" class="text-4xl font-bold text-emerald-600 mt-2">0</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-4xl mx-auto bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
+        <div class="flex justify-between items-center mb-2">
+            <h3 class="text-lg font-bold text-gray-800">Semua Riwayat Laporan Masuk</h3>
+            <a href="form-lapor.html" class="text-sm font-semibold text-blue-600 hover:underline">+ Buat Laporan Baru</a>
+        </div>
+        
+        <div id="listSemuaLaporan" class="space-y-4">
+            <p id="teksKosong" class="text-center text-sm text-gray-400 py-6">Belum ada laporan masuk. Silakan isi form terlebih dahulu.</p>
+</div>
+        </div>
+    </div>
+    <div class="max-w-4xl mx-auto text-center mt-12 pb-6">
+        <button onclick="bukaPopUpLogin()" class="inline-flex items-center gap-2 text-xs text-gray-500 hover:text-gray-700 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+            </svg>
+            <span>Masuk sebagai Teknisi Sarpras</span>
+        </button>
+    </div>
+<div id="modalLogin" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+        <div class="bg-gray-800 p-6 rounded-2xl border border-gray-700 w-full max-w-sm text-left shadow-2xl mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-base font-bold text-gray-100 flex items-center gap-2">🔐 Otentikasi Teknisi</h3>
+                <button onclick="tutupPopUpLogin()" class="text-gray-400 hover:text-gray-200 text-sm">✕</button>
+            </div>
+            <p class="text-xs text-gray-400 mb-4">Area khusus tim Sarpras Gedung BB Polban. Masukkan kredensial Anda.</p>
+            
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Nama Teknisi</label>
+                    <input type="text" id="inputNamaTeknisi" placeholder="Contoh: Pak Toto" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Kata Sandi</label>
+                    <input type="password" id="inputPasswordTeknisi" placeholder="••••••••" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-blue-500">
+                </div>
+                <button onclick="validasiLoginTeknisi()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm py-2.5 rounded-lg transition mt-2">
+                    Buka Akses Portal
+                </button>
+            </div>
+        </div>
+    </div>
+    <script>
+    const FIREBASE_URL = "https://sima-kel-1-default-rtdb.firebaseio.com/laporan.json";
+
+    // 1. FUNGSI UNTUK SINKRONISASI REALTIME KE DASHBOARD UTAMA
+    function muatDataFirebase() {
+        fetch(FIREBASE_URL)
+        .then(res => res.json())
+        .then(data => {
+            const container = document.getElementById('listSemuaLaporan');
+            if (!container) return;
+            
+            container.innerHTML = "";
+
+            if (!data) {
+                if(document.getElementById('countMenunggu')) document.getElementById('countMenunggu').innerText = "0";
+                if(document.getElementById('countDiproses')) document.getElementById('countDiproses').innerText = "0";
+                if(document.getElementById('countSelesai')) document.getElementById('countSelesai').innerText = "0";
+                container.innerHTML = `<p id="teksKosong" class="text-center text-sm text-gray-400 py-6">Belum ada laporan masuk dari internet.</p>`;
+                return;
+            }
+
+            let jmlMenunggu = 0;
+            let jmlDiproses = 0;
+            let jmlSelesai = 0;
+
+            Object.keys(data).reverse().forEach(key => {
+                const item = data[key];
+
+                if (item.status === "Diterima") jmlMenunggu++;
+                if (item.status === "Diproses") jmlDiproses++;
+                if (item.status === "Selesai") jmlSelesai++;
+
+                // Logika panjang indikator progress bar timeline (Gambar 1)
+                let lebarProgress = "w-1/4"; 
+                if (item.status === "Diproses") lebarProgress = "w-3/4"; 
+                if (item.status === "Selesai") lebarProgress = "w-full"; 
+
+                // Menampilkan kartu riwayat dengan progress bar tanpa merubah desain dasar
+                const kartuHTML = `
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 text-left mb-4">
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">${item.id}</span>
+                            <span class="text-xs text-gray-400">${item.waktu}</span>
+                        </div>
+                        
+                        <h4 class="font-bold text-gray-800 text-base leading-snug mb-2">${item.judul}</h4>
+                        <p class="text-xs text-gray-400 mb-4">Pelapor: ${item.pelapor} | Petugas: ${item.petugas}</p>
+                        
+                        <div class="relative mt-4">
+                            <div class="w-full bg-gray-100 h-1.5 rounded-full"></div>
+                            <div class="absolute top-0 left-0 bg-blue-600 h-1.5 rounded-full ${lebarProgress} transition-all duration-500"></div>
+                            
+                            <div class="flex justify-between items-center text-[10px] text-gray-400 font-semibold mt-2 px-0.5">
+                                <span class="${item.status === 'Diterima' ? 'text-blue-600 font-bold' : ''}">Diterima</span>
+                                <span>Diversifikasi</span>
+                                <span class="${item.status === 'Diproses' ? 'text-blue-600 font-bold' : ''}">Sedang Diperbaiki</span>
+                                <span class="${item.status === 'Selesai' ? 'text-emerald-600 font-bold' : ''}">Selesai</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += kartuHTML;
+            });
+
+            if(document.getElementById('countMenunggu')) document.getElementById('countMenunggu').innerText = jmlMenunggu;
+            if(document.getElementById('countDiproses')) document.getElementById('countDiproses').innerText = jmlDiproses;
+            if(document.getElementById('countSelesai')) document.getElementById('countSelesai').innerText = jmlSelesai;
+        })
+        .catch(err => console.error("Gagal memuat data: ", err));
+    }
+
+    // 2. FUNGSI LOGIKAL POP-UP LOGIN PRIVASI TEKNISI
+    function bukaPopUpLogin() {
+        document.getElementById('modalLogin').classList.remove('hidden');
+    }
+
+    function tutupPopUpLogin() {
+        document.getElementById('modalLogin').classList.add('hidden');
+        document.getElementById('inputNamaTeknisi').value = "";
+        document.getElementById('inputPasswordTeknisi').value = "";
+    }
+
+    function validasiLoginTeknisi() {
+        const nama = document.getElementById('inputNamaTeknisi').value.trim();
+        const password = document.getElementById('inputPasswordTeknisi').value;
+
+        if (nama === "") {
+            alert("Nama Teknisi wajib diisi!");
+            return;
+        }
+
+        if (password === "TeknisiSarprasB2") {
+            alert("Akses Diterima! Selamat datang, " + nama);
+            window.location.href = "Teknsisi.html";
+        } else {
+            alert("⚠️ Akses Ditolak! Password yang Anda masukkan salah.");
+        }
+    }
+    // Eksekusi fungsi realtime
+    muatDataFirebase();
+    setInterval(muatDataFirebase, 3000);
+</script>
+</body>
+</html>
